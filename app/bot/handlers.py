@@ -41,9 +41,13 @@ async def handle_task(message: Message):
     planner = ResearchPlanner()
     plan = await asyncio.to_thread(planner.plan, message.text)
 
+    await message.answer(
+        "Я понял задачу и составил план:\n\n" + "\n".join(f"{i + 1}. {s}" for i, s in enumerate(plan["steps"]))
+    )
+    await message.answer("Начинаю выполнение задачи 🔍")
+
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, telegram_id)
-
         if not user:
             await message.answer("Сначала отправь /start, чтобы зарегистрироваться.")
             return
@@ -51,13 +55,8 @@ async def handle_task(message: Message):
         task = await create_task(session, user.id, plan["title"])
         await add_task_steps(session, task.id, plan["steps"])
 
-    await message.answer(
-        "Я понял задачу и составил план:\n\n" + "\n".join(f"{i + 1}. {s}" for i, s in enumerate(plan["steps"]))
-    )
+        runner = TaskRunner()
+        final_report = await runner.run_task(session, task.id)
 
-    await message.answer("Начинаю выполнение задачи 🔍")
-
-    runner = TaskRunner()
-    await runner.run_task(session, task.id)
-
-    await message.answer("Исследование завершено ✅")
+    await message.answer("Исследование завершено ✅\n\nВот краткий итог:")
+    await message.answer(final_report)

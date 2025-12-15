@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 async def search_web(query: str, max_results: int = 5) -> dict:
     search_url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
         response = await client.get(search_url)
         response.raise_for_status()
 

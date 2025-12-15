@@ -84,3 +84,20 @@ class TaskStep(Base):
     result: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     task: Mapped[Task] = relationship("Task", back_populates="steps")
+
+
+# ---------- Memory ----------
+class Memory(Base):
+    __tablename__ = "memory"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+    )
+
+    user = relationship("User", back_populates="memory")
+
+    User.memory = relationship("Memory", back_populates="user")

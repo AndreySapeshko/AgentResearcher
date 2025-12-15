@@ -9,7 +9,7 @@ from app.config import DATABASE_URL
 # Engine — один на приложение
 engine = create_async_engine(
     DATABASE_URL,
-    echo=False,        # True — если хочешь видеть SQL в логах
+    echo=False,  # True — если хочешь видеть SQL в логах
     pool_pre_ping=True,
 )
 

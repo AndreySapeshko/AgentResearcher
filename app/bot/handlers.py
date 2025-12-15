@@ -4,12 +4,10 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from app.db.crud import (get_or_create_user,
-                         create_task,
-                         add_task_steps,
-                         get_user_by_telegram_id)
-from app.db.session import AsyncSessionLocal
 from app.agent.agent import ResearchPlanner
+from app.agent.task_runner import TaskRunner
+from app.db.crud import add_task_steps, create_task, get_or_create_user, get_user_by_telegram_id
+from app.db.session import AsyncSessionLocal
 
 router = Router()
 
@@ -54,6 +52,12 @@ async def handle_task(message: Message):
         await add_task_steps(session, task.id, plan["steps"])
 
     await message.answer(
-        "Я понял задачу и составил план:\n\n" +
-        "\n".join(f"{i + 1}. {s}" for i, s in enumerate(plan["steps"]))
+        "Я понял задачу и составил план:\n\n" + "\n".join(f"{i + 1}. {s}" for i, s in enumerate(plan["steps"]))
     )
+
+    await message.answer("Начинаю выполнение задачи 🔍")
+
+    runner = TaskRunner()
+    await runner.run_task(session, task.id)
+
+    await message.answer("Исследование завершено ✅")

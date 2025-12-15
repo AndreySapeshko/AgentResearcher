@@ -1,10 +1,10 @@
 import json
-import environ
-
 from pathlib import Path
+
+import environ
 from openai import OpenAI
-from tools import search_web, fetch_url, read_file, write_file
 from schema import tools
+from tools import fetch_url, read_file, search_web, write_file
 
 env_file = Path(__file__).resolve().parent.parent / ".env"
 env = environ.Env()
@@ -32,7 +32,7 @@ class ToolAgent:
                     "Ты анализируешь запрос пользователя, "
                     "вызываешь нужные инструменты, "
                     "а затем формируешь финальный ответ."
-                )
+                ),
             }
         ]
 
@@ -51,10 +51,7 @@ class ToolAgent:
 
             # 🟢 1. Если GPT не вызывает инструменты — финальный ответ
             if not message.tool_calls:
-                self.messages.append({
-                    "role": "assistant",
-                    "content": message.content
-                })
+                self.messages.append({"role": "assistant", "content": message.content})
                 return message.content
 
             # 🔵 2. GPT вызывает инструменты
@@ -63,26 +60,21 @@ class ToolAgent:
                 tool_args = json.loads(call.function.arguments)
 
                 # Добавляем assistant tool_call
-                self.messages.append({
-                    "role": "assistant",
-                    "tool_calls": [
-                        {
-                            "id": call.id,
-                            "type": call.type,
-                            "function": {
-                                "name": tool_name,
-                                "arguments": call.function.arguments
+                self.messages.append(
+                    {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {
+                                "id": call.id,
+                                "type": call.type,
+                                "function": {"name": tool_name, "arguments": call.function.arguments},
                             }
-                        }
-                    ]
-                })
+                        ],
+                    }
+                )
 
                 # Выполняем Python-инструмент
                 result = TOOLS_MAP[tool_name](**tool_args)
 
                 # Возвращаем результат в GPT
-                self.messages.append({
-                    "role": "tool",
-                    "tool_call_id": call.id,
-                    "content": json.dumps(result)
-                })
+                self.messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result)})

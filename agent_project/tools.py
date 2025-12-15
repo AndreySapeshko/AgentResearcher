@@ -1,10 +1,5 @@
 def search_web(query: str) -> dict:
-    return {
-        "results": [
-            f"https://example.com/search?q={query}",
-            f"https://test.com/info/{query.replace(' ', '_')}"
-        ]
-    }
+    return {"results": [f"https://example.com/search?q={query}", f"https://test.com/info/{query.replace(' ', '_')}"]}
 
 
 def fetch_url(url: str) -> dict:

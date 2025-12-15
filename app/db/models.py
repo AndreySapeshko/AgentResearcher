@@ -1,7 +1,8 @@
-from datetime import datetime
-from sqlalchemy import ForeignKey, String, DateTime, Enum, Integer, BigInteger
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 import enum
+from datetime import datetime
+
+from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -25,6 +26,14 @@ class TaskStatus(str, enum.Enum):
     PLANNED = "planned"
     IN_PROGRESS = "in_progress"
     DONE = "done"
+
+
+# ---------- ENUM for task_steps status ----------
+class TaskStepStatus(str, enum.Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    DONE = "done"
+    ERROR = "error"
 
 
 # ---------- TASKS ----------
@@ -52,6 +61,7 @@ class Task(Base):
     # связь с user
     user = relationship("User", back_populates="tasks")
 
+
 User.tasks = relationship("Task", back_populates="user")
 
 
@@ -67,5 +77,10 @@ class TaskStep(Base):
         DateTime(timezone=True),
         default=datetime.utcnow,
     )
+    status: Mapped[TaskStepStatus] = mapped_column(
+        Enum(TaskStepStatus, name="task_step_status"),
+        default=TaskStepStatus.PENDING,
+    )
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     task: Mapped[Task] = relationship("Task", back_populates="steps")

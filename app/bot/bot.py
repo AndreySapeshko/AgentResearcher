@@ -1,9 +1,9 @@
 import asyncio
 
-from aiogram import Bot
-from aiogram import Dispatcher
-from app.config import TELEGRAM_BOT_TOKEN
+from aiogram import Bot, Dispatcher
+
 from app.bot.handlers import router
+from app.config import TELEGRAM_BOT_TOKEN
 
 dp = Dispatcher()
 bot = Bot(TELEGRAM_BOT_TOKEN)

@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import User, Task, TaskStep
+from app.db.models import Task, TaskStep, TaskStepStatus, User
 
 
 async def get_or_create_user(
@@ -38,7 +38,6 @@ async def get_user_by_telegram_id(session: AsyncSession, telegram_id: int):
     return result.scalar_one_or_none()
 
 
-
 async def create_task(session: AsyncSession, user_id: int, title: str):
     task = Task(
         user_id=user_id,
@@ -63,3 +62,60 @@ async def add_task_steps(session: AsyncSession, task_id: int, steps: list[str]):
     session.add_all(task_steps)
     await session.commit()
     return task_steps
+
+
+async def get_step_by_id(
+    session: AsyncSession,
+    step_id: int,
+) -> TaskStep | None:
+    stmt = select(TaskStep).where(TaskStep.id == step_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_next_pending_step(session: AsyncSession, task_id: int):
+    stmt = (
+        select(TaskStep)
+        .where(TaskStep.task_id == task_id)
+        .where(TaskStep.status == TaskStepStatus.PENDING)
+        .order_by(TaskStep.step_order.asc())
+        .limit(1)
+    )
+
+    result = await session.execute(stmt)
+    return result.scalars().first()
+
+
+async def mark_step_in_progress(session: AsyncSession, step_id: int):
+    task_step = await get_step_by_id(session, step_id)
+
+    if not task_step:
+        return None
+
+    task_step.status = TaskStepStatus.IN_PROGRESS
+    await session.commit()
+    return task_step
+
+
+async def update_step_result(session: AsyncSession, step_id: int, result: str):
+    task_step = await get_step_by_id(session, step_id)
+
+    if not task_step:
+        return None
+
+    task_step.status = TaskStepStatus.DONE
+    task_step.result = result
+    await session.commit()
+    return task_step
+
+
+async def mark_step_error(session: AsyncSession, step_id: int, error: str):
+    task_step = await get_step_by_id(session, step_id)
+
+    if not task_step:
+        return None
+
+    task_step.status = TaskStepStatus.ERROR
+    task_step.result = error
+    await session.commit()
+    return task_step

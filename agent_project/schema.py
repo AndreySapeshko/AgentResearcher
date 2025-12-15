@@ -9,9 +9,11 @@ tools = [
                 "properties": {
                     "query": {"type": "string"},
                 },
-                "required": ["query", ]
-            }
-        }
+                "required": [
+                    "query",
+                ],
+            },
+        },
     },
     {
         "type": "function",
@@ -23,9 +25,11 @@ tools = [
                 "properties": {
                     "url": {"type": "string"},
                 },
-                "required": ["url", ]
-            }
-        }
+                "required": [
+                    "url",
+                ],
+            },
+        },
     },
     {
         "type": "function",
@@ -37,9 +41,11 @@ tools = [
                 "properties": {
                     "path": {"type": "string"},
                 },
-                "required": ["path", ]
-            }
-        }
+                "required": [
+                    "path",
+                ],
+            },
+        },
     },
     {
         "type": "function",
@@ -52,8 +58,11 @@ tools = [
                     "path": {"type": "string"},
                     "content": {"type": "string"},
                 },
-                "required": ["path", "content",]
-            }
-        }
-    }
+                "required": [
+                    "path",
+                    "content",
+                ],
+            },
+        },
+    },
 ]

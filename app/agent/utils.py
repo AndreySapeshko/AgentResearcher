@@ -1,0 +1,99 @@
+import asyncio
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.types import Message
+
+from app.agent.agent import ResearchPlanner
+from app.agent.task_runner import TaskRunner
+from app.db.crud import get_recent_memories, build_memory_context, create_task, add_task_steps
+from app.db.models import User, Memory, Task
+from app.db.session import AsyncSessionLocal
+
+
+async def run_research(
+        user: User,
+        user_input: str,
+        session: AsyncSession,
+        message: Message,
+        memory_context:str,
+        task: Task = None
+):
+    planner = ResearchPlanner()
+    plan = await planner.plan(user_input, memory_context)
+
+    await message.answer(
+        "Я понял задачу и составил план:\n\n" + "\n".join(f"{i + 1}. {s}" for i, s in enumerate(plan["steps"]))
+    )
+    await message.answer("Начинаю выполнение задачи 🔍")
+
+    if task:
+        task.title = plan["title"]
+        await session.commit()
+    else:
+        task = await create_task(session, user.id, plan["title"])
+    await add_task_steps(session, task.id, plan["steps"])
+
+    runner = TaskRunner()
+    async with AsyncSessionLocal() as session:
+        final_report = await runner.run_task(session, task.id)
+
+    await message.answer("Исследование завершено ✅\n\nВот краткий итог:")
+    await message.answer(final_report)
+
+
+def is_short(text: str) -> bool:
+    return len(text.strip()) < 100
+
+
+async def ask_clarification(message: Message):
+    await message.answer(
+        '''
+        Ты уже исследовал эту тему ранее.
+
+        Чтобы продолжить максимально полезно, уточни, пожалуйста:
+
+        1️⃣ Цель исследования  
+           (например: обучение, применение в проекте, выбор инструмента)
+
+        2️⃣ Уровень  
+           beginner / intermediate / advanced
+
+        3️⃣ Формат результата  
+           brief (кратко) / standard / deep (с примерами)
+
+        Ответь одним сообщением, например:
+        "advanced, deep, для реального проекта"
+
+        '''
+    )
+
+
+def build_continuation_context(
+    clarification_context: str,
+    memories: list[Memory],
+) -> str:
+    parts = []
+
+    # 1. Главный контекст — продолжение
+    parts.append(
+        "=== CURRENT CONTINUATION CONTEXT ===\n"
+        f"{clarification_context}\n"
+        "=== END CONTINUATION CONTEXT ==="
+    )
+
+    # 2. Фоновая память (если есть)
+    if memories:
+        memory_lines = []
+        for m in memories:
+            memory_lines.append(
+                f"- Topic: {m.title}\n"
+                f"  Summary: {m.summary[:200]}"
+            )
+
+        parts.append(
+            "=== BACKGROUND KNOWLEDGE (PAST RESEARCH) ===\n"
+            + "\n".join(memory_lines)
+            + "\n=== END BACKGROUND ==="
+        )
+
+    return "\n\n".join(parts)

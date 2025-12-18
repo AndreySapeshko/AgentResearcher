@@ -1,19 +1,32 @@
-import asyncio
+import logging
 
-from aiogram import Router
-from aiogram.filters import Command
+from aiogram import Router, F
+from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
 from app.agent.agent import ResearchPlanner
+from app.agent.utils import run_research, is_short, ask_clarification, build_continuation_context
+from app.agent.detect_repeat import detect_repeat
 from app.agent.task_runner import TaskRunner
-from app.db.crud import add_task_steps, create_task, get_or_create_user, get_user_by_telegram_id
+from app.db.crud import (
+    add_task_steps,
+    create_task,
+    get_last_memories,
+    get_memory_by_id,
+    get_or_create_user,
+    get_user_by_telegram_id, get_recent_memories, build_memory_context, get_task_waiting_clarification,
+    clear_clarification_state, save_clarification_state,
+)
 from app.db.session import AsyncSessionLocal
+
+logger = logging.getLogger("bot")
 
 router = Router()
 
 
 @router.message(Command("start"))
 async def start_cmd(message: Message):
+    print("ENTER start_cmd")
     telegram_id = message.from_user.id
     username = message.from_user.username
 
@@ -34,29 +47,123 @@ async def start_cmd(message: Message):
     )
 
 
-@router.message()
-async def handle_task(message: Message):
-    telegram_id = message.from_user.id
+    @router.message(Command("history"))
+    async def history_handler(message: Message):
+        print("ENTER history_handler")
+        async with AsyncSessionLocal() as session:
+            user = await get_user_by_telegram_id(session, message.from_user.id)
+            memories = await get_last_memories(session, user.id)
 
-    planner = ResearchPlanner()
-    plan = await asyncio.to_thread(planner.plan, message.text)
+        if not memories:
+            await message.answer("История пока пуста.")
+            return
 
-    await message.answer(
-        "Я понял задачу и составил план:\n\n" + "\n".join(f"{i + 1}. {s}" for i, s in enumerate(plan["steps"]))
-    )
-    await message.answer("Начинаю выполнение задачи 🔍")
+        text = "📚 Последние исследования:\n\n"
+        for m in memories:
+            text += f"#{m.id} — {m.title}\n"
+
+        text += "\nИспользуй /last или /show <id>"
+        await message.answer(text)
+
+
+@router.message(Command("last"))
+async def last_handler(message: Message):
+    print("ENTER last_handler")
+    async with AsyncSessionLocal() as session:
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        memories = await get_last_memories(session, user.id, limit=1)
+
+    if not memories:
+        await message.answer("Нет сохранённых исследований.")
+        return
+
+    await message.answer(memories[0].summary)
+
+
+@router.message(Command("show"))
+async def show_handler(message: Message, command: CommandObject):
+    print("ENTER show_handler")
+    if not command.args:
+        await message.answer("Укажи ID исследования: /show 3")
+        return
+
+    memory_id = int(command.args)
 
     async with AsyncSessionLocal() as session:
-        user = await get_user_by_telegram_id(session, telegram_id)
-        if not user:
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        memory = await get_memory_by_id(session, memory_id, user.id)
+
+    if not memory:
+        await message.answer("Исследование не найдено.")
+        return
+
+    await message.answer(f"📌 {memory.title}\n\n{memory.summary}")
+
+
+@router.message(F.text & ~F.text.startswith("/"))
+async def handle_task(message: Message):
+    print("ENTER handle_task")
+    user_input = message.text.strip()
+    async with AsyncSessionLocal() as session:
+        print("ENTER AsyncSessionLocal")
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        print(f"user: {user}")
+        if user is None:
             await message.answer("Сначала отправь /start, чтобы зарегистрироваться.")
             return
 
-        task = await create_task(session, user.id, plan["title"])
-        await add_task_steps(session, task.id, plan["steps"])
+        memories = await get_recent_memories(session, user.id)
 
-        runner = TaskRunner()
-        final_report = await runner.run_task(session, task.id)
+        # 1. Проверяем: не ждём ли мы уточнение
+        pending_task = await get_task_waiting_clarification(session, user.id)
+        if pending_task:
+            memory_context = build_continuation_context(
+                pending_task.clarification_context,
+                memories,
+            )
 
-    await message.answer("Исследование завершено ✅\n\nВот краткий итог:")
-    await message.answer(final_report)
+            enriched_input = (
+                    "User clarification:\n"
+                    + user_input
+            )
+
+            await clear_clarification_state(session, pending_task)
+
+            await run_research(
+                user=user,
+                user_input=enriched_input,
+                session=session,
+                message=message,
+                task=pending_task,
+                memory_context=memory_context
+            )
+            return
+
+        # 2. Обычный вход
+
+        is_repeat = detect_repeat(user_input, memories)
+        logger.info(
+            "Agent flow: user=%s repeat=%s clarification=%s",
+            user.id,
+            is_repeat,
+            bool(pending_task),
+        )
+        if is_repeat and is_short(user_input):
+            await ask_clarification(message)
+
+            await save_clarification_state(
+                session=session,
+                user_id=user.id,
+                original_input=user_input,
+            )
+            return
+
+        # 3. Иначе — сразу исследуем
+        memory_context = build_memory_context(memories)
+        await run_research(
+            user=user,
+            user_input=user_input,
+            session=session,
+            message=message,
+            memory_context=memory_context
+        )

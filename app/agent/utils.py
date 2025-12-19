@@ -29,7 +29,7 @@ async def send_safe(message, text: str):
 
 
 async def run_research(
-        user: User, user_input: str, session: AsyncSession, message: Message, memory_context: str, task: Task = None
+    user: User, user_input: str, session: AsyncSession, message: Message, memory_context: str, task: Task = None
 ):
     planner = ResearchPlanner()
     print("ENTER planner")
@@ -84,8 +84,8 @@ async def ask_clarification(message: Message):
 
 
 def build_continuation_context(
-        clarification_context: str,
-        memories: list[Memory],
+    clarification_context: str,
+    memories: list[Memory],
 ) -> str:
     parts = []
 

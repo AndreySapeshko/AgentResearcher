@@ -1,5 +1,7 @@
 import json
+
 import pytest
+
 from app.agent.agent import ResearchPlanner
 
 
@@ -14,10 +16,12 @@ async def test_planner_returns_valid_plan(mock_llm):
                     "Msg",
                     (),
                     {
-                        "content": json.dumps({
-                            "title": "Test research",
-                            "steps": ["step 1", "step 2"],
-                        })
+                        "content": json.dumps(
+                            {
+                                "title": "Test research",
+                                "steps": ["step 1", "step 2"],
+                            }
+                        )
                     },
                 )
             },

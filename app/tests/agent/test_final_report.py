@@ -1,4 +1,5 @@
 import pytest
+
 from app.agent.final_report import FinalReportAgent
 
 
@@ -12,9 +13,7 @@ async def test_final_report_generate(mock_llm):
                 "message": type(
                     "Msg",
                     (),
-                    {
-                        "content": "FINAL REPORT"
-                    },
+                    {"content": "FINAL REPORT"},
                 )
             },
         )

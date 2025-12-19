@@ -1,8 +1,10 @@
 import pytest
+
 from app.db.crud import (
-    create_task,
     add_task_steps,
-    get_next_pending_step, get_or_create_user,
+    create_task,
+    get_next_pending_step,
+    get_or_create_user,
 )
 from app.db.models import TaskStepStatus
 

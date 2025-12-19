@@ -1,11 +1,14 @@
 import pytest
+
 from app.db.crud import (
+    add_task_steps,
+    create_task,
+    get_or_create_user,
+    mark_step_error,
     mark_step_in_progress,
     update_step_result,
-    mark_step_error, get_or_create_user,
 )
 from app.db.models import TaskStepStatus
-from app.db.crud import create_task, add_task_steps
 
 
 @pytest.mark.asyncio

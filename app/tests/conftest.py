@@ -20,7 +20,6 @@ encoded_password = quote_plus(POSTGRES_PASSWORD)
 TEST_DATABASE_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{encoded_password}@localhost:5432/test_db"
 
 
-
 @pytest.fixture(scope="session")
 def event_loop():
     loop = asyncio.get_event_loop()

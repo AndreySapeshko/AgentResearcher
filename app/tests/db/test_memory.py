@@ -1,8 +1,11 @@
 import pytest
+
 from app.db.crud import (
-    save_memory,
+    create_task,
     get_last_memories,
-    get_memory_by_id, get_or_create_user, create_task,
+    get_memory_by_id,
+    get_or_create_user,
+    save_memory,
 )
 
 

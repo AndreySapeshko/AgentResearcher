@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
+
 from app.agent.task_runner import TaskRunner
-from app.db.crud import create_task, add_task_steps, get_or_create_user
+from app.db.crud import add_task_steps, create_task, get_or_create_user
 from app.db.models import TaskStepStatus
 
 
@@ -28,9 +29,7 @@ async def test_task_runner_full_flow(session, mock_llm):
                             "message": type(
                                 "Msg",
                                 (),
-                                {
-                                    "content": "TEXT:\nStep result\n\nSOURCES:\n- url"
-                                },
+                                {"content": "TEXT:\nStep result\n\nSOURCES:\n- url"},
                             )
                         },
                     )

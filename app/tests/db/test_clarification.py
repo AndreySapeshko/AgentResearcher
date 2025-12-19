@@ -1,8 +1,10 @@
 import pytest
+
 from app.db.crud import (
-    save_clarification_state,
+    clear_clarification_state,
+    get_or_create_user,
     get_task_waiting_clarification,
-    clear_clarification_state, get_or_create_user,
+    save_clarification_state,
 )
 
 

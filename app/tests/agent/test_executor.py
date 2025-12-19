@@ -1,4 +1,5 @@
 import pytest
+
 from app.agent.step_executor import StepExecutor
 
 
@@ -12,13 +13,7 @@ async def test_executor_parses_text_and_sources(mock_llm):
                 "message": type(
                     "Msg",
                     (),
-                    {
-                        "content": (
-                            "TEXT:\nResult text\n\n"
-                            "SOURCES:\n"
-                            "- https://example.com\n"
-                        )
-                    },
+                    {"content": ("TEXT:\nResult text\n\n" "SOURCES:\n" "- https://example.com\n")},
                 )
             },
         )

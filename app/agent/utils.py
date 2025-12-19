@@ -1,10 +1,10 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.types import Message
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.agent import ResearchPlanner
 from app.agent.task_runner import TaskRunner
-from app.db.crud import create_task, add_task_steps
-from app.db.models import User, Memory, Task
+from app.db.crud import add_task_steps, create_task
+from app.db.models import Memory, Task, User
 from app.db.session import AsyncSessionLocal
 
 MAX_TG_LEN = 4000  # запас
@@ -29,12 +29,7 @@ async def send_safe(message, text: str):
 
 
 async def run_research(
-        user: User,
-        user_input: str,
-        session: AsyncSession,
-        message: Message,
-        memory_context: str,
-        task: Task = None
+        user: User, user_input: str, session: AsyncSession, message: Message, memory_context: str, task: Task = None
 ):
     planner = ResearchPlanner()
     print("ENTER planner")
@@ -67,24 +62,24 @@ def is_short(text: str) -> bool:
 
 async def ask_clarification(message: Message):
     await message.answer(
-        '''
+        """
         Ты уже исследовал эту тему ранее.
 
         Чтобы продолжить максимально полезно, уточни, пожалуйста:
 
-        1️⃣ Цель исследования  
+        1️⃣ Цель исследования
            (например: обучение, применение в проекте, выбор инструмента)
 
-        2️⃣ Уровень  
+        2️⃣ Уровень
            beginner / intermediate / advanced
 
-        3️⃣ Формат результата  
+        3️⃣ Формат результата
            brief (кратко) / standard / deep (с примерами)
 
         Ответь одним сообщением, например:
         "advanced, deep, для реального проекта"
 
-        '''
+        """
     )
 
 
@@ -96,24 +91,17 @@ def build_continuation_context(
 
     # 1. Главный контекст — продолжение
     parts.append(
-        "=== CURRENT CONTINUATION CONTEXT ===\n"
-        f"{clarification_context}\n"
-        "=== END CONTINUATION CONTEXT ==="
+        "=== CURRENT CONTINUATION CONTEXT ===\n" f"{clarification_context}\n" "=== END CONTINUATION CONTEXT ==="
     )
 
     # 2. Фоновая память (если есть)
     if memories:
         memory_lines = []
         for m in memories:
-            memory_lines.append(
-                f"- Topic: {m.title}\n"
-                f"  Summary: {m.summary[:200]}"
-            )
+            memory_lines.append(f"- Topic: {m.title}\n" f"  Summary: {m.summary[:200]}")
 
         parts.append(
-            "=== BACKGROUND KNOWLEDGE (PAST RESEARCH) ===\n"
-            + "\n".join(memory_lines)
-            + "\n=== END BACKGROUND ==="
+            "=== BACKGROUND KNOWLEDGE (PAST RESEARCH) ===\n" + "\n".join(memory_lines) + "\n=== END BACKGROUND ==="
         )
 
     return "\n\n".join(parts)
@@ -127,11 +115,7 @@ def parse_executor_output(content: str) -> tuple[str, list[str]]:
         text_part, sources_part = content.split("SOURCES:", 1)
         text = text_part.replace("TEXT:", "").strip()
 
-        sources = [
-            line.strip("- ").strip()
-            for line in sources_part.splitlines()
-            if line.strip()
-        ]
+        sources = [line.strip("- ").strip() for line in sources_part.splitlines() if line.strip()]
     else:
         text = content.strip()
 

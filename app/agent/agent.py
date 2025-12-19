@@ -1,8 +1,7 @@
 import json
 
-from app.agent.prompts import SYSTEM_PROMPT
 from app.agent.client import llm_client
-
+from app.agent.prompts import SYSTEM_PROMPT
 
 # async def safe_chat_completion(**kwargs):
 #     for attempt in range(3):
@@ -25,15 +24,9 @@ class ResearchPlanner:
         ]
 
         if memory_context:
-            messages.append({
-                "role": "system",
-                "content": memory_context
-            })
+            messages.append({"role": "system", "content": memory_context})
 
-        messages.append({
-            "role": "user",
-            "content": user_input
-        })
+        messages.append({"role": "user", "content": user_input})
         print("REQUEST LLM from planer")
         response = await llm_client.chat(
             model="gpt-4.1-mini",

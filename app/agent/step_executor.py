@@ -1,8 +1,6 @@
-import json
-
+from app.agent.client import llm_client
 from app.agent.prompts import STEP_EXECUTOR_PROMPT
 from app.agent.tools import fetch_url_sync, search_web_sync
-from app.agent.client import llm_client
 
 TOOLS_MAP = {
     "search_web_sync": search_web_sync,
@@ -25,6 +23,7 @@ class StepExecutor:
         content = response.choices[0].message.content
 
         from app.agent.utils import parse_executor_output
+
         text, sources = parse_executor_output(content)
 
         return {

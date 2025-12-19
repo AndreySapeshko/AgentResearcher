@@ -1,21 +1,21 @@
 import logging
 
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
-from app.agent.agent import ResearchPlanner
-from app.agent.utils import run_research, is_short, ask_clarification, build_continuation_context
 from app.agent.detect_repeat import detect_repeat
-from app.agent.task_runner import TaskRunner
+from app.agent.utils import ask_clarification, build_continuation_context, is_short, run_research
 from app.db.crud import (
-    add_task_steps,
-    create_task,
+    build_memory_context,
+    clear_clarification_state,
     get_last_memories,
     get_memory_by_id,
     get_or_create_user,
-    get_user_by_telegram_id, get_recent_memories, build_memory_context, get_task_waiting_clarification,
-    clear_clarification_state, save_clarification_state,
+    get_recent_memories,
+    get_task_waiting_clarification,
+    get_user_by_telegram_id,
+    save_clarification_state,
 )
 from app.db.session import AsyncSessionLocal
 
@@ -45,7 +45,6 @@ async def start_cmd(message: Message):
         "AgentResearcher готов. 🚀\n"
         "Пришли задачу для исследования."
     )
-
 
     @router.message(Command("history"))
     async def history_handler(message: Message):
@@ -120,10 +119,7 @@ async def handle_task(message: Message):
                 memories,
             )
 
-            enriched_input = (
-                    "User clarification:\n"
-                    + user_input
-            )
+            enriched_input = "User clarification:\n" + user_input
 
             await clear_clarification_state(session, pending_task)
 
@@ -133,7 +129,7 @@ async def handle_task(message: Message):
                 session=session,
                 message=message,
                 task=pending_task,
-                memory_context=memory_context
+                memory_context=memory_context,
             )
             return
 
@@ -159,9 +155,5 @@ async def handle_task(message: Message):
         # 3. Иначе — сразу исследуем
         memory_context = build_memory_context(memories)
         await run_research(
-            user=user,
-            user_input=user_input,
-            session=session,
-            message=message,
-            memory_context=memory_context
+            user=user, user_input=user_input, session=session, message=message, memory_context=memory_context
         )

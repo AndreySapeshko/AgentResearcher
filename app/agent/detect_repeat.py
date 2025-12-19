@@ -1,18 +1,17 @@
-from app.db.models import Memory
 from app.agent.client import llm_client
+from app.db.models import Memory
 
 
 async def detect_repeat(
-        user_input: str,
-        memories: list[Memory],
+    user_input: str,
+    memories: list[Memory],
 ) -> bool:
     if not memories:
         return False
 
     topics = "\n".join(f"- {m.title}" for m in memories)
 
-    prompt = \
-        f"""
+    prompt = f"""
         User request:
         "{user_input}"
 
@@ -25,7 +24,7 @@ async def detect_repeat(
         Answer ONLY one word:
         YES or NO
         """
-    print(f"REQUEST LLM from detect_repeat")
+    print("REQUEST LLM from detect_repeat")
     response = await llm_client.chat(
         model="gpt-4.1-mini",
         messages=[

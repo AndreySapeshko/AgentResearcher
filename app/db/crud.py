@@ -182,12 +182,7 @@ async def get_recent_memories(
     user_id: int,
     limit: int = 3,
 ):
-    stmt = (
-        select(Memory)
-        .where(Memory.user_id == user_id)
-        .order_by(Memory.created_at.desc())
-        .limit(limit)
-    )
+    stmt = select(Memory).where(Memory.user_id == user_id).order_by(Memory.created_at.desc()).limit(limit)
     result = await session.execute(stmt)
     return result.scalars().all()
 
@@ -201,23 +196,16 @@ def build_memory_context(memories: list[Memory]) -> str:
         lines.append(f"- {m.title}: {m.summary[:300]}")
 
     return (
-            "=== PREVIOUS RESEARCH CONTEXT ===\n"
-            "The user has already completed the following research:\n\n"
-            + "\n".join(lines)
-            + "\n\n"
-              "If the current request overlaps with these topics, "
-              "DO NOT repeat the same material.\n"
-              "=== END CONTEXT ==="
+        "=== PREVIOUS RESEARCH CONTEXT ===\n"
+        "The user has already completed the following research:\n\n" + "\n".join(lines) + "\n\n"
+        "If the current request overlaps with these topics, "
+        "DO NOT repeat the same material.\n"
+        "=== END CONTEXT ==="
     )
 
 
 async def get_task_waiting_clarification(session, user_id):
-    stmt = (
-        select(Task)
-        .where(Task.user_id == user_id)
-        .where(Task.clarification_needed == True)
-        .limit(1)
-    )
+    stmt = select(Task).where(Task.user_id == user_id).where(Task.clarification_needed.is_(True)).limit(1)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 

@@ -105,9 +105,7 @@ async def handle_task(message: Message):
     print("ENTER handle_task")
     user_input = message.text.strip()
     async with AsyncSessionLocal() as session:
-        print("ENTER AsyncSessionLocal")
         user = await get_user_by_telegram_id(session, message.from_user.id)
-        print(f"user: {user}")
         if user is None:
             await message.answer("Сначала отправь /start, чтобы зарегистрироваться.")
             return
@@ -141,7 +139,7 @@ async def handle_task(message: Message):
 
         # 2. Обычный вход
 
-        is_repeat = detect_repeat(user_input, memories)
+        is_repeat = await detect_repeat(user_input, memories)
         logger.info(
             "Agent flow: user=%s repeat=%s clarification=%s",
             user.id,

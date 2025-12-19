@@ -1,27 +1,21 @@
-import asyncio
 import json
-import openai
-
-from openai import OpenAI
 
 from app.agent.prompts import SYSTEM_PROMPT
-from app.config import OPEN_AI_KEY
-
-client = OpenAI(api_key=OPEN_AI_KEY)
+from app.agent.client import llm_client
 
 
-async def safe_chat_completion(**kwargs):
-    for attempt in range(3):
-        try:
-            return await asyncio.to_thread(
-                client.chat.completions.create,
-                **kwargs
-            )
-        except openai.RateLimitError as e:
-            wait_time = 20
-            await asyncio.sleep(wait_time)
-
-    raise RuntimeError("Rate limit retry failed")
+# async def safe_chat_completion(**kwargs):
+#     for attempt in range(3):
+#         try:
+#             return await asyncio.to_thread(
+#                 client.chat.completions.create,
+#                 **kwargs
+#             )
+#         except openai.RateLimitError as e:
+#             wait_time = 20
+#             await asyncio.sleep(wait_time)
+#
+#     raise RuntimeError("Rate limit retry failed")
 
 
 class ResearchPlanner:
@@ -40,8 +34,8 @@ class ResearchPlanner:
             "role": "user",
             "content": user_input
         })
-
-        response = await safe_chat_completion(
+        print("REQUEST LLM from planer")
+        response = await llm_client.chat(
             model="gpt-4.1-mini",
             messages=messages,
         )

@@ -1,32 +1,32 @@
 from app.db.models import Memory
-from app.agent.agent import safe_chat_completion
-
+from app.agent.client import llm_client
 
 
 async def detect_repeat(
-    user_input: str,
-    memories: list[Memory],
+        user_input: str,
+        memories: list[Memory],
 ) -> bool:
     if not memories:
         return False
 
     topics = "\n".join(f"- {m.title}" for m in memories)
 
-    prompt = f"""
-User request:
-"{user_input}"
+    prompt = \
+        f"""
+        User request:
+        "{user_input}"
 
-Previously researched topics:
-{topics}
+        Previously researched topics:
+        {topics}
 
-Question:
-Does the user request repeat or strongly overlap with any of the previous topics?
+        Question:
+        Does the user request repeat or strongly overlap with any of the previous topics?
 
-Answer ONLY one word:
-YES or NO
-"""
-
-    response = await safe_chat_completion(
+        Answer ONLY one word:
+        YES or NO
+        """
+    print(f"REQUEST LLM from detect_repeat")
+    response = await llm_client.chat(
         model="gpt-4.1-mini",
         messages=[
             {"role": "system", "content": "You are a strict classifier."},

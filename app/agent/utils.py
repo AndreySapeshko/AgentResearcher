@@ -1,13 +1,31 @@
-import asyncio
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.types import Message
 
 from app.agent.agent import ResearchPlanner
 from app.agent.task_runner import TaskRunner
-from app.db.crud import get_recent_memories, build_memory_context, create_task, add_task_steps
+from app.db.crud import create_task, add_task_steps
 from app.db.models import User, Memory, Task
 from app.db.session import AsyncSessionLocal
+
+MAX_TG_LEN = 4000  # запас
+
+
+async def send_safe(message, text: str):
+    parts = []
+    current = ""
+
+    for line in text.split("\n"):
+        if len(current) + len(line) + 1 <= MAX_TG_LEN:
+            current += line + "\n"
+        else:
+            parts.append(current.strip())
+            current = line + "\n"
+
+    if current:
+        parts.append(current.strip())
+
+    for part in parts:
+        await message.answer(part)
 
 
 async def run_research(
@@ -15,10 +33,11 @@ async def run_research(
         user_input: str,
         session: AsyncSession,
         message: Message,
-        memory_context:str,
+        memory_context: str,
         task: Task = None
 ):
     planner = ResearchPlanner()
+    print("ENTER planner")
     plan = await planner.plan(user_input, memory_context)
 
     await message.answer(
@@ -35,10 +54,11 @@ async def run_research(
 
     runner = TaskRunner()
     async with AsyncSessionLocal() as session:
-        final_report = await runner.run_task(session, task.id)
+        print("ENTER task runer")
+        final_report = await runner.run_task(session, task.id, message)
 
     await message.answer("Исследование завершено ✅\n\nВот краткий итог:")
-    await message.answer(final_report)
+    await send_safe(message, final_report)
 
 
 def is_short(text: str) -> bool:
@@ -69,8 +89,8 @@ async def ask_clarification(message: Message):
 
 
 def build_continuation_context(
-    clarification_context: str,
-    memories: list[Memory],
+        clarification_context: str,
+        memories: list[Memory],
 ) -> str:
     parts = []
 
@@ -97,3 +117,22 @@ def build_continuation_context(
         )
 
     return "\n\n".join(parts)
+
+
+def parse_executor_output(content: str) -> tuple[str, list[str]]:
+    text = ""
+    sources: list[str] = []
+
+    if "SOURCES:" in content:
+        text_part, sources_part = content.split("SOURCES:", 1)
+        text = text_part.replace("TEXT:", "").strip()
+
+        sources = [
+            line.strip("- ").strip()
+            for line in sources_part.splitlines()
+            if line.strip()
+        ]
+    else:
+        text = content.strip()
+
+    return text, sources

@@ -10,14 +10,12 @@ async def get_or_create_user(
     username: str | None,
 ) -> User:
     stmt = select(User).where(User.telegram_id == telegram_id)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
+    user = (await session.scalars(stmt)).one_or_none()
 
     if user:
         # обновляем username, если изменился
         if user.username != username:
             user.username = username
-            await session.commit()
         return user
 
     # создаём нового пользователя
@@ -26,16 +24,14 @@ async def get_or_create_user(
         username=username,
     )
     session.add(user)
-    await session.commit()
-    await session.refresh(user)
+    await session.flush()
 
     return user
 
 
 async def get_user_by_telegram_id(session: AsyncSession, telegram_id: int):
     stmt = select(User).where(User.telegram_id == telegram_id)
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    return (await session.scalars(stmt)).one_or_none()
 
 
 async def create_task(session: AsyncSession, user_id: int, title: str):
@@ -44,8 +40,7 @@ async def create_task(session: AsyncSession, user_id: int, title: str):
         title=title,
     )
     session.add(task)
-    await session.commit()
-    await session.refresh(task)
+    await session.flush()
     return task
 
 
@@ -60,7 +55,7 @@ async def add_task_steps(session: AsyncSession, task_id: int, steps: list[str]):
     ]
 
     session.add_all(task_steps)
-    await session.commit()
+    await session.flush()
     return task_steps
 
 
@@ -69,8 +64,7 @@ async def get_task_by_id(
     task_id: int,
 ) -> TaskStep | None:
     stmt = select(Task).where(Task.id == task_id)
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    return (await session.scalars(stmt)).one_or_none()
 
 
 async def get_step_by_id(
@@ -78,8 +72,7 @@ async def get_step_by_id(
     step_id: int,
 ) -> TaskStep | None:
     stmt = select(TaskStep).where(TaskStep.id == step_id)
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    return (await session.scalars(stmt)).one_or_none()
 
 
 async def get_next_pending_step(session: AsyncSession, task_id: int):
@@ -102,7 +95,6 @@ async def mark_step_in_progress(session: AsyncSession, step_id: int):
         return None
 
     task_step.status = TaskStepStatus.IN_PROGRESS
-    await session.commit()
     return task_step
 
 
@@ -115,7 +107,6 @@ async def update_step_result(session: AsyncSession, step_id: int, result: dict):
     task_step.status = TaskStepStatus.DONE
     task_step.result = result["text"]
     task_step.sources_json = result["sources"]
-    await session.commit()
     return task_step
 
 
@@ -127,7 +118,6 @@ async def mark_step_error(session: AsyncSession, step_id: int, error: str):
 
     task_step.status = TaskStepStatus.ERROR
     task_step.result = error
-    await session.commit()
     return task_step
 
 
@@ -153,7 +143,7 @@ async def save_memory(
         sources_json=sources_json or [],
     )
     session.add(memory)
-    await session.commit()
+    await session.flush()
     return memory
 
 
@@ -173,8 +163,7 @@ async def get_memory_by_id(
     user_id: int,
 ):
     stmt = select(Memory).where(Memory.id == memory_id).where(Memory.user_id == user_id)
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    return (await session.scalars(stmt)).one_or_none()
 
 
 async def get_recent_memories(
@@ -206,14 +195,13 @@ def build_memory_context(memories: list[Memory]) -> str:
 
 async def get_task_waiting_clarification(session, user_id):
     stmt = select(Task).where(Task.user_id == user_id).where(Task.clarification_needed.is_(True)).limit(1)
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    return (await session.scalars(stmt)).one_or_none()
 
 
 async def clear_clarification_state(session, task):
     task.clarification_needed = False
     task.clarification_context = None
-    await session.commit()
+    await session.flush()
 
 
 async def save_clarification_state(session, user_id, original_input):
@@ -224,4 +212,4 @@ async def save_clarification_state(session, user_id, original_input):
         clarification_context=original_input,
     )
     session.add(task)
-    await session.commit()
+    await session.flush()

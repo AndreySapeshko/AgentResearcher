@@ -36,6 +36,7 @@ async def start_cmd(message: Message):
             telegram_id=telegram_id,
             username=username,
         )
+        await session.commit()
 
     await message.answer(
         f"👋 Привет!\n\n"
@@ -150,6 +151,7 @@ async def handle_task(message: Message):
                 user_id=user.id,
                 original_input=user_input,
             )
+            await session.commit()
             return
 
         # 3. Иначе — сразу исследуем

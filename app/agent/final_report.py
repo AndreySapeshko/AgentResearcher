@@ -1,16 +1,21 @@
-from openai import OpenAI
-
+from app.agent.client import llm_client
 from app.agent.prompts import FINAL_REPORT_PROMPT
-from app.config import OPEN_AI_KEY
-
-client = OpenAI(api_key=OPEN_AI_KEY)
 
 
 class FinalReportAgent:
-    def generate(self, steps_results: list[str]) -> str:
-        content = "\n\n".join(f"Шаг {i + 1}:\n{result}" for i, result in enumerate(steps_results))
+    async def generate(
+        self,
+        steps_results: list[str],
+        sources: list[str],
+    ) -> str:
+        content = (
+            "Результаты шагов:\n\n"
+            + "\n\n".join(f"Шаг {i + 1}:\n{result}" for i, result in enumerate(steps_results))
+            + "\n\nИсточники:\n"
+            + "\n".join(f"- {s}" for s in sources)
+        )
 
-        response = client.chat.completions.create(
+        response = await llm_client.chat(
             model="gpt-4.1-mini",
             messages=[
                 {"role": "system", "content": FINAL_REPORT_PROMPT},

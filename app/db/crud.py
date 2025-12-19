@@ -106,14 +106,15 @@ async def mark_step_in_progress(session: AsyncSession, step_id: int):
     return task_step
 
 
-async def update_step_result(session: AsyncSession, step_id: int, result: str):
+async def update_step_result(session: AsyncSession, step_id: int, result: dict):
     task_step = await get_step_by_id(session, step_id)
 
     if not task_step:
         return None
 
     task_step.status = TaskStepStatus.DONE
-    task_step.result = result
+    task_step.result = result["text"]
+    task_step.sources_json = result["sources"]
     await session.commit()
     return task_step
 
@@ -141,12 +142,86 @@ async def get_completed_steps(session: AsyncSession, task_id: int):
     return result.scalars().all()
 
 
-async def save_memory(session: AsyncSession, task_id: int, content: str):
-    task = await get_task_by_id(session, task_id)
+async def save_memory(
+    session: AsyncSession, user_id: int, task_id: int, title: str, summary: str, sources_json: list | None = None
+):
     memory = Memory(
-        user_id=task.user_id,
-        content=content,
+        user_id=user_id,
+        task_id=task_id,
+        title=title,
+        summary=summary,
+        sources_json=sources_json or [],
     )
     session.add(memory)
     await session.commit()
     return memory
+
+
+async def get_last_memories(
+    session: AsyncSession,
+    user_id: int,
+    limit: int = 5,
+):
+    stmt = select(Memory).where(Memory.user_id == user_id).order_by(Memory.created_at.desc()).limit(limit)
+    result = await session.execute(stmt)
+    return result.scalars().all()
+
+
+async def get_memory_by_id(
+    session: AsyncSession,
+    memory_id: int,
+    user_id: int,
+):
+    stmt = select(Memory).where(Memory.id == memory_id).where(Memory.user_id == user_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_recent_memories(
+    session: AsyncSession,
+    user_id: int,
+    limit: int = 3,
+):
+    stmt = select(Memory).where(Memory.user_id == user_id).order_by(Memory.created_at.desc()).limit(limit)
+    result = await session.execute(stmt)
+    return result.scalars().all()
+
+
+def build_memory_context(memories: list[Memory]) -> str:
+    if not memories:
+        return ""
+
+    lines = []
+    for m in memories:
+        lines.append(f"- {m.title}: {m.summary[:300]}")
+
+    return (
+        "=== PREVIOUS RESEARCH CONTEXT ===\n"
+        "The user has already completed the following research:\n\n" + "\n".join(lines) + "\n\n"
+        "If the current request overlaps with these topics, "
+        "DO NOT repeat the same material.\n"
+        "=== END CONTEXT ==="
+    )
+
+
+async def get_task_waiting_clarification(session, user_id):
+    stmt = select(Task).where(Task.user_id == user_id).where(Task.clarification_needed.is_(True)).limit(1)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def clear_clarification_state(session, task):
+    task.clarification_needed = False
+    task.clarification_context = None
+    await session.commit()
+
+
+async def save_clarification_state(session, user_id, original_input):
+    task = Task(
+        user_id=user_id,
+        title=original_input,
+        clarification_needed=True,
+        clarification_context=original_input,
+    )
+    session.add(task)
+    await session.commit()

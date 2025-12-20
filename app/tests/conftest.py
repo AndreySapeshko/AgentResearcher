@@ -1,7 +1,6 @@
 import asyncio
 import os
 from unittest.mock import AsyncMock
-from urllib.parse import quote_plus
 
 import pytest
 import pytest_asyncio

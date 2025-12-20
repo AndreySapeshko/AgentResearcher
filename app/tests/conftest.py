@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.agent.client import llm_client
+from app.db.crud import get_or_create_user
 from app.db.models import Base
 
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
@@ -48,3 +49,45 @@ def mock_llm(monkeypatch):
 
     monkeypatch.setattr(llm_client, "chat", async_mock)
     return async_mock
+
+
+@pytest.fixture
+async def user(session):
+    return await get_or_create_user(session=session, telegram_id=123, username="test")
+
+
+class From_user:
+    def __init__(self, telegram_id=123, username="test"):
+        self.id = telegram_id
+        self.username = username
+
+
+class FakeUser:
+    def __init__(self, user_id=1, telegram_id=123, username="test"):
+        self.id = user_id
+        self.telegram_id = telegram_id
+        self.username = username
+
+
+class FakeMessage:
+    def __init__(self, user, text=""):
+        self.text = text
+        self.user_id = user.id
+        self.from_user = From_user(telegram_id=user.telegram_id, username=user.username)
+        self.answer = AsyncMock()
+
+
+@pytest.fixture
+def fake_user():
+    return FakeUser()
+
+
+@pytest.fixture
+def fake_message(fake_user):
+    return FakeMessage(fake_user)
+
+
+@pytest.fixture
+def fake_message_from_auth_user(user):
+    message = FakeMessage(user)
+    return message

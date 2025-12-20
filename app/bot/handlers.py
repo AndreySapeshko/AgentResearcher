@@ -47,23 +47,27 @@ async def start_cmd(message: Message):
         "Пришли задачу для исследования."
     )
 
-    @router.message(Command("history"))
-    async def history_handler(message: Message):
-        print("ENTER history_handler")
-        async with AsyncSessionLocal() as session:
-            user = await get_user_by_telegram_id(session, message.from_user.id)
-            memories = await get_last_memories(session, user.id)
 
-        if not memories:
-            await message.answer("История пока пуста.")
+@router.message(Command("history"))
+async def history_handler(message: Message):
+    print("ENTER history_handler")
+    async with AsyncSessionLocal() as session:
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        if user is None:
+            await message.answer("Сначала отправь /start, чтобы зарегистрироваться.")
             return
+        memories = await get_last_memories(session, user.id)
 
-        text = "📚 Последние исследования:\n\n"
-        for m in memories:
-            text += f"#{m.id} — {m.title}\n"
+    if not memories:
+        await message.answer("История пока пуста.")
+        return
 
-        text += "\nИспользуй /last или /show <id>"
-        await message.answer(text)
+    text = "📚 Последние исследования:\n\n"
+    for m in memories:
+        text += f"#{m.id} — {m.title}\n"
+
+    text += "\nИспользуй /last или /show <id>"
+    await message.answer(text)
 
 
 @router.message(Command("last"))
@@ -71,6 +75,9 @@ async def last_handler(message: Message):
     print("ENTER last_handler")
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, message.from_user.id)
+        if user is None:
+            await message.answer("Сначала отправь /start, чтобы зарегистрироваться.")
+            return
         memories = await get_last_memories(session, user.id, limit=1)
 
     if not memories:
@@ -91,6 +98,10 @@ async def show_handler(message: Message, command: CommandObject):
 
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, message.from_user.id)
+        print(f"message.from_user.id: {message.from_user.id}")
+        if user is None:
+            await message.answer("Сначала отправь /start, чтобы зарегистрироваться.")
+            return
         memory = await get_memory_by_id(session, memory_id, user.id)
 
     if not memory:

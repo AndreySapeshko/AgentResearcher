@@ -42,15 +42,16 @@ async def run_research(
 
     if task:
         task.title = plan["title"]
-        await session.commit()
     else:
         task = await create_task(session, user.id, plan["title"])
     await add_task_steps(session, task.id, plan["steps"])
+    await session.commit()
 
     runner = TaskRunner()
     async with AsyncSessionLocal() as session:
         print("ENTER task runer")
         final_report = await runner.run_task(session, task.id, message)
+        await session.commit()
 
     await message.answer("Исследование завершено ✅\n\nВот краткий итог:")
     await send_safe(message, final_report)

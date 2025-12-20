@@ -16,7 +16,6 @@ from app.db.models import Base
 
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
-encoded_password = quote_plus(POSTGRES_PASSWORD)
 TEST_DATABASE_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:5432/test_db"
 
 

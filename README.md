@@ -1,291 +1,77 @@
-# 📘 Документация проекта AgentResearcher
-## 1. Краткое описание проекта (README — начало)
-# AgentResearcher
+# AgentResearcher — AI Research Assistant in Telegram
 
-AgentResearcher — это асинхронный исследовательский агент с Telegram-интерфейсом,
-способный выполнять многошаговые исследования по пользовательскому запросу,
-сохранять результаты в память и формировать структурированные итоговые отчёты.
+**AgentResearcher** is a Telegram-based AI assistant designed for research, analysis, and structured exploration of topics using large language models.
 
-Проект демонстрирует практическую реализацию:
-- LLM-агента с планированием и выполнением задач
-- устойчивости к rate limit ограничениям
-- работы с памятью (PostgreSQL)
-- продакшн-подхода к Telegram-ботам
-
-## 2. Архитектура высокого уровня
-🔹 Общая схема (словесно, потом можно нарисовать)
-```
-Telegram User
-     ↓
-Telegram Bot (aiogram)
-     ↓
-Agent Controller
-     ↓
-Research Planner (LLM)
-     ↓
-Task Runner
-     ├── Step Executor (LLM)
-     ├── Memory Storage (PostgreSQL)
-     ↓
-Final Report Generator (LLM)
-     ↓
-Telegram Response (safe send)
-```
-Ключевая идея:
-
-Агент разделён на этапы мышления, исполнения и редактирования.
-
-## 3. Agent Loop (ключевая часть)
-## Agent Loop
-
-AgentResearcher реализует классический агентный цикл:
-
-1. Perceive — получает запрос пользователя из Telegram
-2. Plan — формирует план исследования с помощью LLM
-3. Act — последовательно выполняет шаги плана
-4. Observe — сохраняет результаты шагов и источники
-5. Reflect — агрегирует результаты в итоговый отчёт
-6. Remember — сохраняет итог в долговременную память
-
-Почему это важно
-
-- каждый этап изолирован
-
-- легко оптимизировать и тестировать
-
-- соответствует современным AI-agent паттернам
-
-## 4. Планирование (Research Planner)
-## Research Planner
-
-Planner отвечает за преобразование пользовательского запроса
-в структурированный план исследования.
-
-Вход:
-- пользовательский запрос
-- контекст памяти (при наличии)
-
-Выход:
-- заголовок задачи
-- упорядоченный список шагов
-
-
-Особенности:
-
-- planner не выполняет исследование
-
-- planner не использует инструменты
-
-- planner отвечает только за декомпозицию задачи
-
-## 5. Исполнение шагов (Executor)
-## Step Executor
-
-Executor выполняет каждый шаг исследования.
-
-Для каждого шага:
-- вызывается один LLM-запрос
-- возвращается:
-  - текст результата
-  - список источников
-
-Контракт результата шага
-```
-{
-  "text": "Результат шага",
-  "sources": ["example.com", "wikipedia.org"]
-}
-```
-Почему один запрос на шаг
-
-- минимизация latency
-
-- устойчивость к rate limit
-
-- предсказуемость выполнения
-
-## 6. Итоговый отчёт (Final Report)
-## Final Report Generator
-
-Final Report не выполняет исследование.
-Он агрегирует уже полученные данные.
-
-Задачи:
-- объединить результаты шагов
-- убрать повторы
-- структурировать текст
-- отобразить источники
-
-
-Ограничения:
-
-- используется только предоставленный контент
-
-- добавление новой информации запрещено
-
-- целевая длина контролируется prompt + кодом
-
-## 7. Работа с памятью (Memory)
-## Memory System
-
-Memory — долговременное хранилище результатов исследований.
-
-Сохраняется:
-- пользователь
-- тема исследования
-- итоговый отчёт
-- использованные источники
-
-
-Память используется для:
-
-- определения повторяющихся запросов
-
-- уточняющих вопросов
-
-- улучшения будущих планов
-
-## 8. Работа с rate limits (очень сильный пункт)
-## Rate Limit Strategy
-
-OpenAI API имеет многоуровневые ограничения:
-- RPM (requests per minute)
-- concurrency
-- penalty windows после 429 ошибок
-
-В проекте реализовано:
-- единый LLMClient
-- глобальный throttling
-- retry с backoff
-- устойчивость к RateLimitError
-
-
-Ключевой принцип:
-
-- RateLimitError — это ожидаемое состояние, а не ошибка.
-
-## 9. Telegram ограничения и доставка сообщений
-## Telegram Message Delivery
-
-Telegram API ограничивает длину сообщения 4096 символами.
-
-В проекте реализован механизм:
-- автоматической разбивки длинных отчётов
-- сохранения структуры текста
-- гарантированной доставки без ошибок API
-
-## 10. Стек технологий
-## Tech Stack
-
-- Python 3.11
-- aiogram (Telegram bot)
-- OpenAI API
-- PostgreSQL
-- SQLAlchemy (async)
-- Docker + Docker Compose
-- asyncio
-
-## 11. Запуск проекта
-
-## Installation & Running
-
-### 1. Клонирование репозитория
-
-```
-git clone https://github.com/<your-username>/AgentResearcher.git
-cd AgentResearcher
-```
-### 2. Переменные окружения
-Перед запуском необходимо создать файл .env в корне проекта
-или задать переменные окружения вручную.
-
-Пример .env:
-
-env
-```
-# Telegram
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key
-
-# Database
-POSTGRES_DB=agentresearcher
-POSTGRES_USER=agentresearcher
-POSTGRES_PASSWORD=agentresearcher
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-```
-⚠️ Файл .env не должен коммититься в репозиторий.
-
-### 3. Запуск через Docker Compose (рекомендуется)
-Проект полностью контейнеризован.
-
-
-`docker compose up --build`
-
-После запуска:
-
-- Telegram-бот становится доступен
-
-- база данных PostgreSQL поднимается автоматически
-
-- миграции применяются при старте
-
-### 4. Остановка проекта
-
-`docker compose down`
-
-Проверка работы:
-
-- Открой Telegram
-
-- Найди своего бота
-
-- Отправь команду /start
-
-- Отправь любой исследовательский запрос, например:
-
-
-`Исследуй способы выращивания зелени в теплицах`
-
-Бот:
-
-- сформирует план
-
-- выполнит исследование
-
-- вернёт структурированный итоговый отчёт
-
+The project demonstrates how AI agents can be integrated into real-world workflows to help users analyze information, explore ideas, and generate structured insights.
 
 ---
 
-## 🔧 Локальный запуск (опционально, без Docker)
+## 🧠 What does AgentResearcher do?
 
-## Local Development (optional)
+AgentResearcher allows users to interact with an AI assistant directly in Telegram to:
 
-### Установка зависимостей
+- analyze topics and questions
+- explore ideas step-by-step
+- generate structured summaries
+- assist with research and information gathering
+- experiment with AI-agent style workflows
 
-`poetry install`
-
-Запуск PostgreSQL
-
-Необходимо запустить PostgreSQL вручную
-и указать параметры подключения в .env.
-
-Запуск бота
-
-`poetry run python app/bot/bot.py`
+The bot focuses on **reasoning and analysis**, not just simple chat responses.
 
 ---
 
-## 12. Что демонстрирует проект (очень важно для портфолио)
+## 🚀 Why this project matters
 
+This project demonstrates practical skills in:
 
-## What this project demonstrates
+- building Telegram bots with **aiogram**
+- integrating **LLM APIs**
+- designing AI-assisted workflows
+- handling async backend logic
+- structuring AI responses for real use cases
 
-- проектирование LLM-агентов
-- асинхронную архитектуру
-- работу с внешними API и ограничениями
-- продакшн-подход к Telegram-ботам
-- устойчивость и предсказуемость поведения системы
+AgentResearcher is an example of how AI assistants can be adapted for:
+- research tasks
+- analytical workflows
+- internal tools
+- experimental AI products
+
+---
+
+## 🛠 Tech stack
+
+- Python
+- aiogram
+- AsyncIO
+- LLM APIs (OpenAI / OpenRouter compatible)
+- Structured prompts and response handling
+
+---
+
+## 🔍 Example use cases
+
+- AI assistant for topic research
+- Analytical helper for idea exploration
+- Internal AI tool for teams
+- Prototype for AI-powered Telegram bots
+
+---
+
+## 📦 Project status
+
+AgentResearcher is a **working prototype / experimental project** created to explore AI-agent patterns and Telegram-based AI interaction.
+
+It can be extended or adapted for specific business or research needs.
+
+---
+
+## 📌 Related projects
+
+- **OrderHunterAI** — automated order collection and AI-based lead analysis  
+  https://github.com/AndreySapeshko/OrderHunterAI
+
+---
+
+## 📬 Contact
+
+If you are interested in building AI-powered Telegram bots or AI assistants, feel free to reach out via GitHub profile.
